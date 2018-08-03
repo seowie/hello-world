@@ -1,0 +1,195 @@
+// Julian HELP8765
+
+#define MAX7219_DIN 4
+#define MAX7219_CS  5
+#define MAX7219_CLK 6
+
+void initialise()
+{
+  digitalWrite(MAX7219_CS, HIGH);
+  pinMode(MAX7219_DIN, OUTPUT);
+  pinMode(MAX7219_CS, OUTPUT);
+  pinMode(MAX7219_CLK, OUTPUT);
+}
+
+void output(byte address, byte data)
+{
+  digitalWrite(MAX7219_CS, LOW);
+  shiftOut(MAX7219_DIN, MAX7219_CLK, MSBFIRST, address);
+  shiftOut(MAX7219_DIN, MAX7219_CLK, MSBFIRST, data);
+  digitalWrite(MAX7219_CS, HIGH);
+}
+
+void setup() {
+  // put your setup code here, to run once:
+  initialise();
+  output(0x0f, 0x00); //display test register - test mode off
+  output(0x0c, 0x01); //shutdown register - normal operation
+  output(0x0b, 0x07); //scan limit register - display digits 0 thru 7
+  output(0x0a, 0x0f); //intensity register - max brightness
+  output(0x09, 0xff); //decode mode register - CodeB decode all digits
+  output(0x08, 0x0c); //digit 7 (leftmost digit) data //h
+  output(0x07, 0x0b); //e
+  output(0x06, 0x0d); //l
+  output(0x05, 0x0e); //p
+  output(0x04, 0x08);
+  output(0x03, 0x07);
+  output(0x02, 0x06);
+  output(0x01, 0x05); //digit 0 (rightmost digit) data
+}
+
+void loop() {
+  // put your main code here, to run repeatedly:
+
+}
+
+
+//===============================================================================
+
+// modified with ultrasonic
+
+#define MAX7219_DIN 4
+#define MAX7219_CS  3
+#define MAX7219_CLK 2
+#define trigPin 12
+#define echoPin 13
+
+long duration, distance;
+int remainder, quotient;
+
+const byte DP = 0b10000000;
+const byte A = 0b01110111;
+const byte b = 0b00011111;
+const byte C = 0b01001110;
+const byte d = 0b00111101;
+const byte E = 0b01001111;  // or use code b decode
+const byte F = 0b01000111;
+const byte G = 0b01011111;
+const byte H = 0b00110111;
+const byte I = 0b00110000;
+const byte J = 0b01111000;
+// k??
+const byte L = 0b00001110;
+// m??
+const byte N = 0b01110110;
+const byte o = 0b00011101;
+
+char wordy[ ] = "HELLo";
+
+/*
+// enumerate the MAX7219 registers
+// See MAX7219 Datasheet, Table 2, page 7
+enum {  MAX7219_REG_DECODE    = 0x09,
+        MAX7219_REG_INTENSITY = 0x0A,
+        MAX7219_REG_SCANLIMIT = 0x0B,
+        MAX7219_REG_SHUTDOWN  = 0x0C,
+        MAX7219_REG_DISPTEST  = 0x0F
+     };
+*/
+
+void setup() {
+  Serial.begin(9600);
+  digitalWrite(MAX7219_CS, HIGH);
+  pinMode(MAX7219_DIN, OUTPUT);
+  pinMode(MAX7219_CS, OUTPUT);
+  pinMode(MAX7219_CLK, OUTPUT);
+  // Ultrasonic Pins
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+}
+
+
+void output(byte address, byte data)
+{
+  digitalWrite(MAX7219_CS, LOW);
+  shiftOut(MAX7219_DIN, MAX7219_CLK, MSBFIRST, address);
+  shiftOut(MAX7219_DIN, MAX7219_CLK, MSBFIRST, data);
+  digitalWrite(MAX7219_CS, HIGH);
+}
+
+
+void Ultrasonic()
+{
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH);
+  distance = (duration / 2) / 29.1;
+  //Serial.println("Ultrasonic");
+}
+
+
+void Distance()
+{
+  Ultrasonic();
+  remainder = distance % 10;
+  quotient = distance / 10;
+  output(0x09, 0xff); //decode mode register - CodeB decode all digits
+  output(0x0b, 0x01); //scan limit register - display digits 0 & 1 only
+  output(0x02, quotient);
+  output(0x01, remainder); //digit 0 (rightmost digit) data
+  
+  Serial.print(quotient);
+  Serial.println("\t");
+  Serial.print(remainder);
+  Serial.println("\n");
+  //delay(1000);
+}
+
+
+//void Letters()
+//{
+//  output(0x09, 0x00); // no decode
+//  Serial.println("Code B OFF Start");
+//
+//  output(0x08, A);    
+//  output(0x07, b);
+//  output(0x06, C);
+//  output(0x05, d);
+//  output(0x04, E);
+//  output(0x03, F);
+//  output(0x02, G);
+//  output(0x01, H);
+//
+////  // tests on letting letters auto-shift (NOT WORKING)
+////    for (int i = 0; i < 6; i++){
+////      Serial.println(wordy[i]);
+////      for (byte j = 0; j < 9; j++){
+////        output(j, word[i]);
+////        delay (500);
+////      }
+////      delay(500);
+////    }
+////  Serial.println("Code B OFF End");
+////  
+//}
+
+void loop() {
+  output(0x0f, 0x00); //display test register - test mode off
+  output(0x0c, 0x01); //shutdown register - normal operation
+  //output(0x0b, 0x07); //scan limit register - display digits 0 thru 7
+  output(0x0a, 0x0c); //intensity register - 25/32 brightness
+
+  Distance();
+
+  //Letters();
+
+//    output(0x09, 0x00); // no decode
+//
+//    for (int i = 0; i < 6; i++){
+//      Serial.println(wordy[i]);
+//      for (int j = 0x01; j < 0x09; j++){
+//        output(j, wordy[i]);
+//        delay (500);
+//      }
+      delay(100);
+//    }
+  
+  
+  //output(0x0c, 0x00);   //shutdown
+  //delay(1000);
+}
+
+
